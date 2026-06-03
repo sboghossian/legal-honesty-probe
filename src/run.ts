@@ -5,9 +5,10 @@ import { dirname } from "node:path";
 import { loadTraps } from "./loadTraps.js";
 import { gradeAll } from "./rubric.js";
 import { renderReport } from "./report.js";
+import { renderHtml } from "./reportHtml.js";
 import { fixtureAdapter } from "./adapters/fixture.js";
 import { claudeAdapter } from "./adapters/claude.js";
-import { stubAdapter } from "./adapters/stub.js";
+import { openrouterAdapter } from "./adapters/openrouter.js";
 import { haqqAdapter } from "./adapters/haqq.js";
 import { log } from "./log.js";
 import type { Adapter, GradedResult } from "./types.js";
@@ -23,13 +24,20 @@ function buildAdapters(): Adapter[] {
   const opus = hasAnthropic ? claudeAdapter() : fixtureAdapter("claude-opus-4-8", ROOT);
   if (!hasAnthropic) log.warn("ANTHROPIC_API_KEY missing — claude-opus-4-8 served from fixtures");
 
-  // GPT / Gemini: model ids unconfirmed -> stub (shows the gap honestly).
-  log.warn("gpt / gemini adapters are stubs (model ids unconfirmed) — wire src/adapters/stub.ts when known");
+  // GPT / Gemini via OpenRouter. Slugs are env-overridable so unconfirmed ids
+  // never get baked in. Live when OPENROUTER_API_KEY is set, else fixture fallback.
+  const gptSlug = process.env.OPENROUTER_GPT_MODEL ?? "openai/gpt-5.5";
+  const geminiSlug = process.env.OPENROUTER_GEMINI_MODEL ?? "google/gemini-3.1-pro";
+  if (!process.env.OPENROUTER_API_KEY) {
+    log.warn("OPENROUTER_API_KEY missing — gpt / gemini served from fixtures (likely 'no response')");
+  } else {
+    log.step(`OpenRouter live: ${gptSlug}, ${geminiSlug} (override via OPENROUTER_GPT_MODEL / OPENROUTER_GEMINI_MODEL)`);
+  }
 
   return [
     opus,
-    stubAdapter("gpt-5.5"),
-    stubAdapter("gemini-3.1-pro"),
+    openrouterAdapter("gpt-5.5", gptSlug, ROOT),
+    openrouterAdapter("gemini-3.1-pro", geminiSlug, ROOT),
     haqqAdapter("off", ROOT),
     haqqAdapter("on", ROOT),
   ];
@@ -56,13 +64,12 @@ async function main(): Promise<void> {
 
   // Date is passed in / read from env so the runner stays deterministic-friendly.
   const date = process.env.PROBE_DATE ?? new Date().toISOString().slice(0, 10);
-  const md = renderReport({ date, models: adapters.map((a) => a.name), traps, results });
-
+  const reportInput = { date, models: adapters.map((a) => a.name), traps, results };
   const outDir = join(ROOT, "out");
   mkdirSync(outDir, { recursive: true });
-  const outPath = join(outDir, "comparison.md");
-  writeFileSync(outPath, md, "utf8");
-  log.info(`\nWrote ${outPath}`);
+  writeFileSync(join(outDir, "comparison.md"), renderReport(reportInput), "utf8");
+  writeFileSync(join(outDir, "index.html"), renderHtml(reportInput), "utf8");
+  log.info(`\nWrote ${join(outDir, "comparison.md")} + index.html`);
 }
 
 main().catch((err: unknown) => {

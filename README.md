@@ -27,12 +27,25 @@ npm run probe        # build + run → out/comparison.md
 npm test             # rubric + verifier tests
 ```
 
-No API keys required. With no keys, model rows are served from recorded **fixtures** under `fixtures/<model>/<trapId>.txt` so the page renders and the rubric is testable today. Set `ANTHROPIC_API_KEY` to run `claude-opus-4-8` live instead.
+No API keys required. With no keys, model rows are served from recorded **fixtures** under `fixtures/<model>/<trapId>.txt` so the page renders and the rubric is testable today.
+
+To run live:
+
+```bash
+export ANTHROPIC_API_KEY=...     # claude-opus-4-8 (direct)
+export OPENROUTER_API_KEY=...    # gpt-5.5 + gemini-3.1-pro (via OpenRouter)
+# optional, override slugs if the defaults 404:
+export OPENROUTER_GPT_MODEL=openai/gpt-5.5
+export OPENROUTER_GEMINI_MODEL=google/gemini-3.1-pro
+npm run probe
+```
+
+Each adapter independently uses its key if present and falls back to fixtures otherwise — so you can run any subset live.
 
 ## Status / honesty notes
 
-- **`claude-opus-4-8`** is the only real adapter. It runs live when `ANTHROPIC_API_KEY` is set; otherwise it reads fixtures.
-- **`gpt-5.5` / `gemini-3.1-pro`** are **stubs**. Their model IDs are unconfirmed and would 404 at runtime, so they are not wired — they report "no response captured" rather than fabricate a comparison. Wire `src/adapters/stub.ts` with a confirmed ID + SDK call to enable them.
+- **`claude-opus-4-8`** runs live via the Anthropic SDK when `ANTHROPIC_API_KEY` is set; otherwise it reads fixtures.
+- **`gpt-5.5` / `gemini-3.1-pro`** run live via **OpenRouter** when `OPENROUTER_API_KEY` is set. Their slugs are env-overridable so an unconfirmed model id is never hardcoded into a 404. With no key (and no fixtures shipped for them) they honestly report "no response captured" rather than fabricate a row.
 - **The HAQQ verifier** here is a transparent, deterministic guard layer (`src/verifier.ts`) standing in for the production cite-verifier: it withholds unverifiable citations and mandates a hedge/scope-lock. Same idea, fully auditable.
 - The shipped fixtures are **illustrative sample responses**, not measurements of any vendor. Run live to produce a real receipt.
 
