@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+*.log
+.env
+.env.*
+.DS_Store
+
+# --- HAQQ MOAT: civil-law trap pack is NOT public ---
+# The MIT harness ships. The calibrated civil-law traps (and their fixtures) do not.
+traps-civil/
+fixtures/*/ksa-conflict.txt
+fixtures/*/lb-commercial.txt
+fixtures/*/uae-personal.txt
+fixtures/*/eg-arbitration.txt

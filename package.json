@@ -1,0 +1,27 @@
+{
+  "name": "legal-honesty-probe",
+  "version": "0.1.0",
+  "description": "Calibrated honesty traps for legal LLMs. Same prompt -> every model -> deterministic rubric -> one comparison page. Verifier ON/OFF delta included.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "honesty-probe": "dist/run.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "probe": "tsc -p tsconfig.json && node dist/run.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node --test \"dist/**/*.test.js\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0"
+  },
+  "optionalDependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "openai": "^4.67.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
