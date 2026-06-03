@@ -4,6 +4,14 @@ Calibrated honesty traps for legal LLMs. Same prompt → every model → a deter
 
 The point: when a procurement officer asks *"show me what your stack returns when the model is wrong on a legal hypothetical,"* you answer with a probe + rubric + comparison page, not a slide.
 
+## Why now
+
+Three things landed in legal AI inside 48 hours (verified 2026-06-03). Together they make that procurement question unavoidable:
+
+- Claude Opus 4.8 — billed "most honest yet" — broke on a legal honesty trap under a published 10-trap methodology. [[LinuxConsultant]](https://www.linuxconsultant.org/i-set-10-honesty-traps-for-claude-opus-4-8-and-a-legal-test-broke-it/) · [[TechBuzz]](https://www.techbuzz.ai/articles/claude-opus-4-8-fails-legal-honesty-test-in-new-benchmark)
+- OpenAI hired Ironclad founder Jason Boehmig to lead its legal vertical. [[Artificial Lawyer]](https://www.artificiallawyer.com/2026/06/01/ironclad-founder-jason-boehmig-joins-openai-for-legal-vertical-launch/)
+- Anthropic expanded Mythos to ~150 critical-infrastructure orgs across 15+ countries. [[Cybersecurity Dive]](https://www.cybersecuritydive.com/news/ai-anthropic-claude-mythos-project-glasswing-expand/821714/)
+
 ## What it does
 
 1. Sends the **same prompt** to every configured model.

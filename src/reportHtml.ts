@@ -17,6 +17,26 @@ function avg(nums: number[]): number {
   return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
 }
 
+// Why this exists, with receipts. Verified 2026-06-03.
+const SOURCES: { label: string; url: string }[] = [
+  {
+    label: "Claude Opus 4.8 — billed “most honest yet” — broke on a legal honesty trap (10-trap methodology)",
+    url: "https://www.linuxconsultant.org/i-set-10-honesty-traps-for-claude-opus-4-8-and-a-legal-test-broke-it/",
+  },
+  {
+    label: "Opus 4.8 fails legal honesty test in new benchmark (TechBuzz)",
+    url: "https://www.techbuzz.ai/articles/claude-opus-4-8-fails-legal-honesty-test-in-new-benchmark",
+  },
+  {
+    label: "OpenAI hires Ironclad founder Jason Boehmig to lead its legal vertical (Artificial Lawyer)",
+    url: "https://www.artificiallawyer.com/2026/06/01/ironclad-founder-jason-boehmig-joins-openai-for-legal-vertical-launch/",
+  },
+  {
+    label: "Anthropic expands Mythos to ~150 critical-infrastructure orgs across 15+ countries (Cybersecurity Dive)",
+    url: "https://www.cybersecuritydive.com/news/ai-anthropic-claude-mythos-project-glasswing-expand/821714/",
+  },
+];
+
 export function renderHtml(input: ReportInput): string {
   const { date, models, traps, results } = input;
   const val = (t: string, m: string): number => results.get(t)?.get(m)?.score.value ?? 0;
@@ -81,6 +101,9 @@ summary{cursor:pointer;padding:12px 0;font-family:ui-monospace,monospace}
 .moat{background:rgba(124,108,255,.16);color:var(--ac);border-radius:5px;padding:1px 7px;font-size:11px;font-family:ui-sans-serif}
 .prompt{color:var(--mut);border-left:2px solid var(--line);padding-left:12px;margin:4px 0 14px}
 table.detail{margin:0 0 16px}table.detail td.why{text-align:left;color:var(--mut)}table.detail td.src{color:var(--mut)}
+.why-now{color:var(--fg);max-width:760px}.why-now em{color:var(--ac);font-style:italic}
+ul.sources{list-style:none;padding:0;margin:8px 0 0}
+ul.sources li{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:11px 14px;margin:7px 0;font-size:13px}
 .foot{color:var(--mut);font-size:12px;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
 a{color:var(--ac)}
 </style></head><body><div class="wrap">
@@ -99,6 +122,11 @@ ${
 <table><thead><tr><th>Model</th>${head}<th>Mean</th></tr></thead><tbody>${rows}</tbody></table>
 <h2>Per-trap detail</h2>
 ${detail}
-<p class="foot">Every score is reproducible from (trap, captured text). "fixture" = recorded response (no live key this run); "stub"/"no response" = adapter not wired. Civil-law trap set is the HAQQ moat and is not published. Harness is MIT.</p>
+<h2>Why now</h2>
+<p class="why-now">Three things landed in legal AI inside 48 hours. Together they make one procurement question unavoidable: <em>what does your stack return when the model is wrong on a legal hypothetical?</em></p>
+<ul class="sources">
+${SOURCES.map((s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a></li>`).join("\n")}
+</ul>
+<p class="foot">Every score is reproducible from (trap, captured text). "fixture" = recorded response (no live key this run); "stub"/"no response" = adapter not wired. The shipped fixtures are illustrative sample responses, not measurements of any vendor — run live with your own keys for a real receipt. Civil-law trap set (KSA / Lebanon / UAE / Egypt) is the HAQQ moat and is not published. Harness is MIT: <a href="https://github.com/sboghossian/legal-honesty-probe" target="_blank" rel="noopener">github.com/sboghossian/legal-honesty-probe</a></p>
 </div></body></html>`;
 }
