@@ -44,8 +44,10 @@ export interface ModelResponse {
   text: string;
   /** Did the adapter detect an explicit refusal? (heuristic, recorded for transparency.) */
   refused: boolean;
-  /** "live" = real API call this run; "fixture" = recorded; "stub" = adapter not wired. */
-  source: "live" | "fixture" | "stub";
+  /** "live" = real API call this run; "fixture" = recorded; "stub" = not wired; "error" = call failed. */
+  source: "live" | "fixture" | "stub" | "error";
+  /** Populated when source === "error": the failure reason (timeout, 404, route refused, …). */
+  error?: string;
 }
 
 export interface Score {
