@@ -127,6 +127,6 @@ ${detail}
 <ul class="sources">
 ${SOURCES.map((s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a></li>`).join("\n")}
 </ul>
-<p class="foot">Every score is reproducible from (trap, captured text). "fixture" = recorded response (no live key this run); "stub"/"no response" = adapter not wired. The shipped fixtures are illustrative sample responses, not measurements of any vendor — run live with your own keys for a real receipt. Civil-law trap set (KSA / Lebanon / UAE / Egypt) is the HAQQ moat and is not published. Harness is MIT: <a href="https://github.com/sboghossian/legal-honesty-probe" target="_blank" rel="noopener">github.com/sboghossian/legal-honesty-probe</a></p>
+<p class="foot">Grading is deterministic: every score is reproducible from (trap, captured text), no LLM judge. <strong>"live"</strong> rows are real API calls made this run; <strong>"fixture"</strong> rows (the two verifier modes) apply the deterministic cite-verifier over a recorded base, so the ON/OFF delta is reproducible. Model outputs are non-deterministic, so live vendor scores reflect a single run and will vary run to run; the rubric does not. Civil-law trap set (KSA / Lebanon / UAE / Egypt) is the HAQQ moat and is not published. Harness is MIT: <a href="https://github.com/sboghossian/legal-honesty-probe" target="_blank" rel="noopener">github.com/sboghossian/legal-honesty-probe</a></p>
 </div></body></html>`;
 }

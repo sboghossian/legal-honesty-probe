@@ -20,9 +20,18 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 function buildAdapters(): Adapter[] {
   const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
 
-  // Opus: live if key present, else recorded fixture under fixtures/claude-opus-4-8/.
-  const opus = hasAnthropic ? claudeAdapter() : fixtureAdapter("claude-opus-4-8", ROOT);
-  if (!hasAnthropic) log.warn("ANTHROPIC_API_KEY missing — claude-opus-4-8 served from fixtures");
+  // Opus: live via Anthropic SDK if ANTHROPIC_API_KEY set; else live via OpenRouter
+  // if that key is set; else recorded fixture. Routing it live everywhere it can
+  // avoids shipping a canned pass for a model under live scrutiny.
+  const opusSlug = process.env.OPENROUTER_OPUS_MODEL ?? "anthropic/claude-opus-4.8";
+  const opus = hasAnthropic
+    ? claudeAdapter()
+    : process.env.OPENROUTER_API_KEY
+      ? openrouterAdapter("claude-opus-4-8", opusSlug, ROOT)
+      : fixtureAdapter("claude-opus-4-8", ROOT);
+  if (hasAnthropic) log.step("claude-opus-4-8 live via Anthropic SDK");
+  else if (process.env.OPENROUTER_API_KEY) log.step(`claude-opus-4-8 live via OpenRouter (${opusSlug})`);
+  else log.warn("no Anthropic/OpenRouter key — claude-opus-4-8 served from fixtures");
 
   // GPT / Gemini via OpenRouter. Slugs are env-overridable so unconfirmed ids
   // never get baked in. Live when OPENROUTER_API_KEY is set, else fixture fallback.

@@ -40,22 +40,22 @@ No API keys required. With no keys, model rows are served from recorded **fixtur
 To run live:
 
 ```bash
-export ANTHROPIC_API_KEY=...     # claude-opus-4-8 (direct)
-export OPENROUTER_API_KEY=...    # gpt-5.5 + gemini-3.1-pro (via OpenRouter)
-# optional, override slugs if the defaults 404:
+export OPENROUTER_API_KEY=...    # one key runs all three: gpt-5.5, gemini-3.1-pro, opus-4.8
+# slugs verified working 2026-06-03 (override if a default 404s):
 export OPENROUTER_GPT_MODEL=openai/gpt-5.5
-export OPENROUTER_GEMINI_MODEL=google/gemini-3.1-pro
+export OPENROUTER_GEMINI_MODEL=google/gemini-3.1-pro-preview
+export OPENROUTER_OPUS_MODEL=anthropic/claude-opus-4.8
+export ANTHROPIC_API_KEY=...     # optional: run Opus via the native Anthropic SDK instead
 npm run probe
 ```
 
-Each adapter independently uses its key if present and falls back to fixtures otherwise — so you can run any subset live.
+Each adapter uses its key if present and falls back to fixtures otherwise — so you can run any subset live. Opus prefers `ANTHROPIC_API_KEY` (native SDK); if that's absent but `OPENROUTER_API_KEY` is set, it routes through OpenRouter.
 
 ## Status / honesty notes
 
-- **`claude-opus-4-8`** runs live via the Anthropic SDK when `ANTHROPIC_API_KEY` is set; otherwise it reads fixtures.
-- **`gpt-5.5` / `gemini-3.1-pro`** run live via **OpenRouter** when `OPENROUTER_API_KEY` is set. Their slugs are env-overridable so an unconfirmed model id is never hardcoded into a 404. With no key (and no fixtures shipped for them) they honestly report "no response captured" rather than fabricate a row.
-- **The HAQQ verifier** here is a transparent, deterministic guard layer (`src/verifier.ts`) standing in for the production cite-verifier: it withholds unverifiable citations and mandates a hedge/scope-lock. Same idea, fully auditable.
-- The shipped fixtures are **illustrative sample responses**, not measurements of any vendor. Run live to produce a real receipt.
+- **`claude-opus-4-8` / `gpt-5.5` / `gemini-3.1-pro`** run live via **OpenRouter** (or the native Anthropic SDK for Opus). Slugs are env-overridable so an unconfirmed id is never hardcoded into a 404. With no key they fall back to fixtures, or report "no response captured" rather than fabricate a row.
+- **The HAQQ verifier** here is a transparent, deterministic guard layer (`src/verifier.ts`) standing in for the production cite-verifier: it withholds unverifiable citations and mandates a hedge/scope-lock. Same idea, fully auditable. Its ON/OFF rows apply this guard over a recorded base, so the delta is reproducible.
+- **Model outputs are non-deterministic.** Live vendor scores reflect a single run and vary run to run; the rubric does not. For a procurement-grade number, average several runs.
 
 ## License & moat
 
