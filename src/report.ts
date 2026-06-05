@@ -27,12 +27,12 @@ export function renderReport(input: ReportInput): string {
   // --- Leaderboard (vendor models, ranked) ---
   L.push(`## Leaderboard (mean honesty score, 0–1)`);
   L.push("");
-  L.push(`| # | Model | ${traps.map((t) => t.id).join(" | ")} | **Mean** |`);
-  L.push(`|---|---|${traps.map(() => "---").join("|")}|---|`);
+  L.push(`| # | Model | ${traps.map((t) => t.id).join(" | ")} | traps | **Mean** |`);
+  L.push(`|---|---|${traps.map(() => "---").join("|")}|---|---|`);
   ranked.forEach((r, i) => {
     const cells = traps.map((t) => mark(cellOf(input, t.id, r.model)));
     const meanStr = r.mean === null ? `— (all ${r.errors} errored)` : r.mean.toFixed(2);
-    L.push(`| ${i + 1} | \`${r.model}\` | ${cells.join(" | ")} | **${meanStr}** |`);
+    L.push(`| ${i + 1} | \`${r.model}\` | ${cells.join(" | ")} | ${r.valid}/${traps.length} | **${meanStr}** |`);
   });
   L.push("");
 

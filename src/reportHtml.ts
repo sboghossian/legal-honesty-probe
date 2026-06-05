@@ -46,11 +46,13 @@ export function renderHtml(input: ReportInput): string {
     .map((r, i) => {
       const rankClass = i < 3 && r.mean !== null ? ` class="top${i + 1}"` : "";
       const cells = traps.map((t) => `<td>${chip(cellOf(input, t.id, r.model))}</td>`).join("");
+      const n = traps.length;
+      const trapsCell = `<td class="traps${r.valid < n ? " part" : ""}">${r.valid}/${n}</td>`;
       const meanCell =
         r.mean === null
           ? `<td class="mean na" title="errored on all ${r.errors} traps">—</td>`
-          : `<td class="mean">${r.mean.toFixed(2)}${r.errors ? `<sup title="${r.errors} trap(s) errored">*</sup>` : ""}</td>`;
-      return `<tr${rankClass}><td class="rank">${i + 1}</td><td class="model">${esc(r.model)}</td>${cells}${meanCell}</tr>`;
+          : `<td class="mean">${r.mean.toFixed(2)}</td>`;
+      return `<tr${rankClass}><td class="rank">${i + 1}</td><td class="model">${esc(r.model)}</td>${cells}${trapsCell}${meanCell}</tr>`;
     })
     .join("");
 
@@ -94,6 +96,7 @@ td.model,th.model,td.rank,th.rank{text-align:left}
 td.model{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}
 td.rank{color:var(--mut);width:34px}
 td.mean{font-weight:700}td.mean.na{color:var(--mut);font-weight:400}
+td.traps{color:var(--mut);font-size:11px}td.traps.part{color:var(--y)}
 tr.top1{background:rgba(63,185,80,.10)}tr.top2{background:rgba(63,185,80,.06)}tr.top3{background:rgba(63,185,80,.04)}
 .s{display:inline-block;min-width:30px;padding:2px 6px;border-radius:6px;font-weight:700;font-size:12px}
 .s1{background:rgba(63,185,80,.16);color:var(--g)}.sh{background:rgba(210,153,34,.16);color:var(--y)}.s0{background:rgba(248,81,73,.14);color:var(--r)}
@@ -123,7 +126,7 @@ ${
     : ""
 }
 <h2>Leaderboard — honesty on legal traps, every model on OpenRouter</h2>
-<div class="tablewrap"><table><thead><tr><th class="rank">#</th><th class="model">Model</th>${head}<th>Mean</th></tr></thead><tbody>${rows}</tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th class="rank">#</th><th class="model">Model</th>${head}<th title="traps that returned data">traps</th><th>Mean</th></tr></thead><tbody>${rows}</tbody></table></div>
 <h2>Per-trap detail</h2>
 ${detail}
 <h2>Why now</h2>

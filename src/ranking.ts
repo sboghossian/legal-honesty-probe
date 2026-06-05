@@ -44,7 +44,9 @@ export function rankModels(input: ReportInput): RankedModel[] {
       if (a.mean === null && b.mean === null) return a.model.localeCompare(b.model);
       if (a.mean === null) return 1;
       if (b.mean === null) return -1;
-      return b.mean - a.mean || a.model.localeCompare(b.model);
+      // Mean first, then completeness (more answered traps ranks higher on ties),
+      // so a 1/9 perfect score never outranks a true 9/9 perfect score.
+      return b.mean - a.mean || b.valid - a.valid || a.model.localeCompare(b.model);
     });
 }
 
