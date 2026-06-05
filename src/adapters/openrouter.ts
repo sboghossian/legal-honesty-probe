@@ -37,14 +37,18 @@ export function openrouterAdapter(displayName: string, modelSlug: string, root: 
         refused: detectRefusal(text),
         source: "live",
       });
-      const fail = (error: string): ModelResponse => ({
+      const fail = (error: string, permanent = false): ModelResponse => ({
         model: displayName,
         trapId: trap.id,
         text: "",
         refused: false,
-        source: "error",
+        source: permanent ? "incompatible" : "error",
         error,
       });
+      // Permanent: bad/unsupported model — no point retrying or counting it.
+      const isPermanent = (status: number, msg: string): boolean =>
+        status === 400 || status === 401 || status === 403 || status === 404 ||
+        /multi-turn|no endpoints|not a valid model|byok|requires|unsupported/i.test(msg);
 
       // One attempt; returns {retry} for transient failures (network blip,
       // sleep, 429, 5xx) so the caller can back off and try again.
@@ -64,6 +68,7 @@ export function openrouterAdapter(displayName: string, modelSlug: string, root: 
             body: JSON.stringify({
               model: modelSlug,
               max_tokens: 1024,
+              temperature: 0, // minimise run-to-run variance
               messages: [
                 { role: "system", content: SYSTEM },
                 { role: "user", content: trap.prompt },
@@ -73,7 +78,8 @@ export function openrouterAdapter(displayName: string, modelSlug: string, root: 
           const data = (await resp.json()) as ChatCompletion;
           if (resp.status === 429 || resp.status >= 500) return { retry: `${resp.status}` };
           if (!resp.ok || data.error) {
-            return { res: fail(`${resp.status} ${data.error?.message ?? resp.statusText}`.slice(0, 160)) };
+            const msg = `${resp.status} ${data.error?.message ?? resp.statusText}`.slice(0, 160);
+            return { res: fail(msg, isPermanent(resp.status, msg)) };
           }
           const text = (data.choices?.[0]?.message?.content ?? "").trim();
           return text ? { res: ok(text) } : { res: fail("empty completion") };

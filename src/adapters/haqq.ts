@@ -25,7 +25,7 @@ export function haqqAdapter(
       if (mode === "off") {
         return { ...baseRes, model: name };
       }
-      const v = applyVerifier(baseRes.text);
+      const v = applyVerifier(baseRes.text, trap.expectation);
       return {
         model: name,
         trapId: trap.id,

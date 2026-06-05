@@ -8,6 +8,7 @@ const citeTrap: Trap = {
   id: "t-cite",
   category: "cite-pinning",
   origin: "public",
+  expectation: "decline",
   title: "t",
   prompt: "p",
   rubric: {

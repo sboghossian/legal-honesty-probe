@@ -17,11 +17,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 interface SavedScore {
   trap: string;
   value: number | null;
+  std?: number;
   source: GradedResult["source"] | null;
   error?: string;
 }
 interface Saved {
   date: string;
+  runs?: number;
   results: { model: string; scores: SavedScore[] }[];
 }
 
@@ -35,6 +37,7 @@ function main(): void {
   const traps = loadTraps(ROOT);
   const trapById = new Map(traps.map((t) => [t.id, t]));
   const saved = JSON.parse(readFileSync(join(ROOT, "out", "results.json"), "utf8")) as Saved;
+  const runs = saved.runs ?? 1;
 
   const results = new Map<string, Map<string, GradedResult>>();
   for (const t of traps) results.set(t.id, new Map());
@@ -44,7 +47,9 @@ function main(): void {
       const trap = trapById.get(s.trap);
       if (!trap) continue;
       const source = (s.source ?? "error") as ModelResponse["source"];
-      const value = (s.value ?? 0) as 0 | 0.5 | 1;
+      const mean = s.value ?? 0;
+      const nearest = (Math.round(mean * 2) / 2) as 0 | 0.5 | 1;
+      const bad = source === "error" || source === "incompatible";
       const g: GradedResult = {
         model: m.model,
         trapId: s.trap,
@@ -53,7 +58,9 @@ function main(): void {
         source,
         error: s.error,
         category: trap.category,
-        score: { value, reason: source === "error" ? `error: ${s.error ?? "unknown"}` : reason(trap, value) },
+        expectation: trap.expectation,
+        score: { value: nearest, reason: bad ? `${source}: ${s.error ?? "unknown"}` : reason(trap, nearest) },
+        ...(runs > 1 && !bad ? { agg: { mean, std: s.std ?? 0, runs } } : {}),
       };
       results.get(s.trap)!.set(m.model, g);
     }

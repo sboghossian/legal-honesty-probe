@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { loadTraps } from "./loadTraps.js";
-import { grade, gradeAll } from "./rubric.js";
+import { gradeAll, gradeRuns } from "./rubric.js";
 import { renderReport } from "./report.js";
 import { renderHtml } from "./reportHtml.js";
 import { fixtureAdapter } from "./adapters/fixture.js";
@@ -78,19 +78,40 @@ async function main(): Promise<void> {
   for (const trap of traps) results.set(trap.id, new Map());
 
   if (allModels) {
-    // Flatten to (trap, adapter) tasks and run through a concurrency pool so we
-    // don't fire thousands of requests at once. Per-call errors are already
-    // captured inside the adapter (source: "error"), so the pool never rejects.
+    // Each cell = K runs of (model, trap), aggregated to mean ± stdev. Flatten to
+    // (trap, adapter) tasks and run through a concurrency pool. Per-call errors are
+    // captured inside the adapter, so the pool never rejects.
+    const K = Math.max(1, Number(process.env.PROBE_RUNS ?? 1));
+    log.info(`PROBE_RUNS=${K} (each cell averaged over ${K} run${K > 1 ? "s" : ""}, temperature 0)`);
+    const runCell = async (trap: Trap, adapter: Adapter): Promise<void> => {
+      const runs = [];
+      for (let k = 0; k < K; k++) runs.push(await adapter.answer(trap));
+      results.get(trap.id)!.set(adapter.name, gradeRuns(trap, runs));
+    };
+
     const tasks: { trap: Trap; adapter: Adapter }[] = [];
     for (const trap of traps) for (const adapter of adapters) tasks.push({ trap, adapter });
     let done = 0;
     const total = tasks.length;
     await mapLimit(tasks, CONCURRENCY, async ({ trap, adapter }) => {
-      const res = await adapter.answer(trap);
-      results.get(trap.id)!.set(adapter.name, { ...res, category: trap.category, score: grade(trap, res) });
+      await runCell(trap, adapter);
       done++;
-      if (done % 100 === 0 || done === total) log.step(`${done}/${total} calls graded`);
+      if (done % 100 === 0 || done === total) log.step(`${done}/${total} cells graded`);
     });
+
+    // Re-sweep: retry only the TRANSIENT-errored cells once more (permanent
+    // "incompatible" models are left out — they are not evaluable).
+    const sweep = tasks.filter(({ trap, adapter }) => results.get(trap.id)!.get(adapter.name)?.source === "error");
+    if (sweep.length) {
+      log.info(`Re-sweeping ${sweep.length} transient-errored cells...`);
+      await mapLimit(sweep, CONCURRENCY, async ({ trap, adapter }) => {
+        const prev = results.get(trap.id)!.get(adapter.name);
+        const runs = [];
+        for (let k = 0; k < K; k++) runs.push(await adapter.answer(trap));
+        const g = gradeRuns(trap, runs);
+        if (g.source !== "error" || prev?.source === "error") results.get(trap.id)!.set(adapter.name, g);
+      });
+    }
   } else {
     for (const trap of traps) {
       const responses = await Promise.all(adapters.map((a) => a.answer(trap)));
@@ -109,11 +130,18 @@ async function main(): Promise<void> {
   const json = {
     date,
     traps: traps.map((t) => ({ id: t.id, category: t.category, origin: t.origin })),
+    runs: Math.max(1, Number(process.env.PROBE_RUNS ?? 1)),
     results: adapters.map((a) => ({
       model: a.name,
       scores: traps.map((t) => {
         const g = results.get(t.id)!.get(a.name);
-        return { trap: t.id, value: g?.score.value ?? null, source: g?.source ?? null, error: g?.error };
+        return {
+          trap: t.id,
+          value: g?.agg ? g.agg.mean : g?.score.value ?? null,
+          std: g?.agg?.std ?? 0,
+          source: g?.source ?? null,
+          error: g?.error,
+        };
       }),
     })),
   };

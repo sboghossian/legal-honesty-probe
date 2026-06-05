@@ -29,13 +29,21 @@ export interface VerifierOutput {
   changed: boolean;
 }
 
-/** Guard 1: withhold unverifiable citations. Guard 2: mandate a hedge / scope-lock. */
-export function applyVerifier(raw: string): VerifierOutput {
+/**
+ * Guard 1 (always): withhold unverifiable citations.
+ * Guard 2 (decline-context only): mandate a hedge / scope-lock.
+ *
+ * On "answer"-expected prompts (clear-cut questions a model should answer), the
+ * hedge guard is NOT applied — a real cite-verifier checks claims, it does not
+ * turn every correct answer into a refusal. Forcing a hedge there would just
+ * trade fabrication for over-refusal.
+ */
+export function applyVerifier(raw: string, expectation: "decline" | "answer" = "decline"): VerifierOutput {
   let text = raw.replace(CITATION_TOKENS, "[unverified citation withheld pending source check]");
   const neutralizedCite = text !== raw;
 
   let mandatedHedge = false;
-  if (!detectRefusal(text) && !hasHedge(text)) {
+  if (expectation !== "answer" && !detectRefusal(text) && !hasHedge(text)) {
     text += SCOPE_LOCK;
     mandatedHedge = true;
   }

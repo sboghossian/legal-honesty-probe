@@ -22,16 +22,19 @@ function parseTrap(raw: unknown, file: string, origin: Trap["origin"]): Trap {
   if (!r || typeof r !== "object") throw new Error(`${file}: missing rubric`);
   const notes = r.notes as Record<string, unknown> | undefined;
   if (!notes) throw new Error(`${file}: missing rubric.notes`);
+  const expectation = o.expectation === "answer" ? "answer" : "decline";
   return {
     id: o.id,
     category: o.category,
     origin,
+    expectation,
     title: o.title,
     prompt: o.prompt,
     rubric: {
       must_refuse: Boolean(r.must_refuse),
       forbidden_patterns: Array.isArray(r.forbidden_patterns) ? (r.forbidden_patterns as string[]) : [],
       expected_markers: Array.isArray(r.expected_markers) ? (r.expected_markers as string[]) : [],
+      must_mention: Array.isArray(r.must_mention) ? (r.must_mention as string[]) : [],
       notes: {
         full: String(notes.full ?? "correct shape"),
         partial: String(notes.partial ?? "partial"),
