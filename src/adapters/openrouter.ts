@@ -24,10 +24,19 @@ export function openrouterAdapter(displayName: string, modelSlug: string, root: 
   if (!key) return fixtureAdapter(displayName, root); // offline: recorded response or "no response"
 
   const TIMEOUT_MS = 60_000;
+  const MAX_ATTEMPTS = 4;
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
   return {
     name: displayName,
     async answer(trap: Trap): Promise<ModelResponse> {
+      const ok = (text: string): ModelResponse => ({
+        model: displayName,
+        trapId: trap.id,
+        text,
+        refused: detectRefusal(text),
+        source: "live",
+      });
       const fail = (error: string): ModelResponse => ({
         model: displayName,
         trapId: trap.id,
@@ -36,39 +45,54 @@ export function openrouterAdapter(displayName: string, modelSlug: string, root: 
         source: "error",
         error,
       });
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
-      try {
-        const resp = await fetch(ENDPOINT, {
-          method: "POST",
-          signal: ac.signal,
-          headers: {
-            Authorization: `Bearer ${key}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://legal-honesty-probe.dashable.dev",
-            "X-Title": "legal-honesty-probe",
-          },
-          body: JSON.stringify({
-            model: modelSlug,
-            max_tokens: 1024,
-            messages: [
-              { role: "system", content: SYSTEM },
-              { role: "user", content: trap.prompt },
-            ],
-          }),
-        });
-        const data = (await resp.json()) as ChatCompletion;
-        if (!resp.ok || data.error) {
-          return fail(`${resp.status} ${data.error?.message ?? resp.statusText}`.slice(0, 160));
+
+      // One attempt; returns {retry} for transient failures (network blip,
+      // sleep, 429, 5xx) so the caller can back off and try again.
+      const attempt = async (): Promise<{ res?: ModelResponse; retry?: string }> => {
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+        try {
+          const resp = await fetch(ENDPOINT, {
+            method: "POST",
+            signal: ac.signal,
+            headers: {
+              Authorization: `Bearer ${key}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://legal-honesty-probe.dashable.dev",
+              "X-Title": "legal-honesty-probe",
+            },
+            body: JSON.stringify({
+              model: modelSlug,
+              max_tokens: 1024,
+              messages: [
+                { role: "system", content: SYSTEM },
+                { role: "user", content: trap.prompt },
+              ],
+            }),
+          });
+          const data = (await resp.json()) as ChatCompletion;
+          if (resp.status === 429 || resp.status >= 500) return { retry: `${resp.status}` };
+          if (!resp.ok || data.error) {
+            return { res: fail(`${resp.status} ${data.error?.message ?? resp.statusText}`.slice(0, 160)) };
+          }
+          const text = (data.choices?.[0]?.message?.content ?? "").trim();
+          return text ? { res: ok(text) } : { res: fail("empty completion") };
+        } catch (e) {
+          // Network-level failure (fetch failed / abort / DNS): transient, retry.
+          return { retry: e instanceof Error ? (e.name === "AbortError" ? "timeout" : e.message) : String(e) };
+        } finally {
+          clearTimeout(timer);
         }
-        const text = (data.choices?.[0]?.message?.content ?? "").trim();
-        if (!text) return fail("empty completion");
-        return { model: displayName, trapId: trap.id, text, refused: detectRefusal(text), source: "live" };
-      } catch (e) {
-        return fail(e instanceof Error ? (e.name === "AbortError" ? "timeout" : e.message) : String(e));
-      } finally {
-        clearTimeout(timer);
+      };
+
+      let lastTransient = "unknown";
+      for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        const { res, retry } = await attempt();
+        if (res) return res;
+        lastTransient = retry ?? "unknown";
+        if (i < MAX_ATTEMPTS - 1) await sleep(1500 * Math.pow(2, i)); // 1.5s, 3s, 6s
       }
+      return fail(`transient x${MAX_ATTEMPTS}: ${lastTransient}`.slice(0, 160));
     },
   };
 }
