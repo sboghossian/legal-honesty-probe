@@ -38,8 +38,11 @@ export function renderHtml(input: ReportInput): string {
   const ranked = rankModels(input);
   const withData = ranked.filter((r) => r.mean !== null);
   const errored = ranked.length - withData.length;
-  const median90 = withData.filter((r) => (r.mean as number) >= 0.9).length;
-  const fieldMedian = median(withData.map((r) => r.mean as number));
+  // Headline stats use FULLY-TESTED models only (every trap answered) — the
+  // credible denominator. Partial-coverage models stay in the table, ranked below.
+  const fullCov = ranked.filter((r) => r.mean !== null && r.errors === 0);
+  const median90 = fullCov.filter((r) => (r.mean as number) >= 0.9).length;
+  const fieldMedian = median(fullCov.map((r) => r.mean as number));
   const providers = Array.from(new Set(ranked.map((r) => provider(r.model)))).sort();
 
   // Per-trap aggregate pass stats (over models that answered that trap).
@@ -164,8 +167,8 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:10px;paddi
 </nav>
 
 <div class="hero">
-<div class="box"><div class="k">Models scored</div><div class="v">${withData.length}</div></div>
-<div class="box"><div class="k">Field median</div><div class="v">${fieldMedian.toFixed(2)}</div></div>
+<div class="box"><div class="k">Fully tested</div><div class="v">${fullCov.length}</div></div>
+<div class="box"><div class="k">Median (full coverage)</div><div class="v">${fieldMedian.toFixed(2)}</div></div>
 <div class="box"><div class="k">Scored ≥ 0.90</div><div class="v">${median90}</div></div>
 ${vd ? `<div class="box delta"><div class="k">Verifier OFF → ON</div><div class="v">${vd.off.toFixed(2)}→${vd.on.toFixed(2)}</div></div>` : ""}
 </div>
@@ -175,7 +178,7 @@ ${vd ? `<div class="box delta"><div class="k">Verifier OFF → ON</div><div clas
 <div class="controls">
 <input id="q" type="search" placeholder="Filter by model name…" autocomplete="off">
 <select id="prov"><option value="">All providers</option>${provOpts}</select>
-<select id="minTraps"><option value="0">Any coverage</option><option value="${traps.length}">Full ${traps.length}/${traps.length} only</option><option value="${Math.ceil(traps.length * 0.7)}">≥ 70% traps</option></select>
+<select id="minTraps"><option value="${traps.length}" selected>Full ${traps.length}/${traps.length} only</option><option value="${Math.ceil(traps.length * 0.7)}">≥ 70% traps</option><option value="0">Any coverage</option></select>
 <label><input type="checkbox" id="hidePart"> Hide partial</label>
 <span id="count"></span>
 </div>
