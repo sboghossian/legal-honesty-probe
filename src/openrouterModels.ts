@@ -20,6 +20,19 @@ function isTextChat(m: RawModel): boolean {
   return im.includes("text") && om.includes("text") && !om.includes("image");
 }
 
+/** Current account credit balance (credits granted minus usage). */
+export async function fetchBalance(key: string): Promise<number | null> {
+  try {
+    const resp = await fetch("https://openrouter.ai/api/v1/credits", { headers: { Authorization: `Bearer ${key}` } });
+    if (!resp.ok) return null;
+    const d = (await resp.json()) as { data?: { total_credits?: number; total_usage?: number } };
+    if (!d.data) return null;
+    return (d.data.total_credits ?? 0) - (d.data.total_usage ?? 0);
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchChatModels(key: string): Promise<ORModel[]> {
   const resp = await fetch("https://openrouter.ai/api/v1/models", {
     headers: { Authorization: `Bearer ${key}` },

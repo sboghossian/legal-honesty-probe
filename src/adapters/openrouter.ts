@@ -45,10 +45,11 @@ export function openrouterAdapter(displayName: string, modelSlug: string, root: 
         source: permanent ? "incompatible" : "error",
         error,
       });
-      // Permanent: bad/unsupported model — no point retrying or counting it.
+      // Permanent: bad/unsupported model, or account out of credits — no point
+      // retrying (402 won't recover without a top-up; retrying it just wastes time).
       const isPermanent = (status: number, msg: string): boolean =>
-        status === 400 || status === 401 || status === 403 || status === 404 ||
-        /multi-turn|no endpoints|not a valid model|byok|requires|unsupported/i.test(msg);
+        status === 400 || status === 401 || status === 402 || status === 403 || status === 404 ||
+        /insufficient credits|multi-turn|no endpoints|not a valid model|byok|requires|unsupported/i.test(msg);
 
       // One attempt; returns {retry} for transient failures (network blip,
       // sleep, 429, 5xx) so the caller can back off and try again.
