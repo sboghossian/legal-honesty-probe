@@ -23,7 +23,7 @@ export function openrouterAdapter(displayName: string, modelSlug: string, root: 
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return fixtureAdapter(displayName, root); // offline: recorded response or "no response"
 
-  const TIMEOUT_MS = 60_000;
+  const TIMEOUT_MS = 40_000;
   const MAX_ATTEMPTS = 4;
   const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 

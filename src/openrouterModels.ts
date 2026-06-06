@@ -39,8 +39,12 @@ export async function fetchChatModels(key: string): Promise<ORModel[]> {
   });
   if (!resp.ok) throw new Error(`OpenRouter /models: ${resp.status} ${resp.statusText}`);
   const data = (await resp.json()) as { data: RawModel[] };
+  // Drop ":free" variants by default — they share a heavy per-minute rate limit
+  // that clogs the run, and they duplicate their paid base models. PROBE_INCLUDE_FREE=1 keeps them.
+  const includeFree = Boolean(process.env.PROBE_INCLUDE_FREE);
   return data.data
     .filter(isTextChat)
+    .filter((m) => includeFree || !m.id.endsWith(":free"))
     .map((m) => ({ id: m.id, name: m.name }))
     .sort((a, b) => a.id.localeCompare(b.id));
 }
