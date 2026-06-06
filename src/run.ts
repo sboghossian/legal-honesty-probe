@@ -140,7 +140,11 @@ async function main(): Promise<void> {
     log.info(`PROBE_RUNS=${K} (each cell averaged over ${K} run${K > 1 ? "s" : ""}, temperature 0)`);
     if (process.env.PROBE_RESUME) log.info(`Resume: preloaded ${loadCheckpoint(ROOT, traps, results)} completed cells (skipped)`);
 
-    let aborted = false;
+    // Abort only on a REAL account drain — many distinct models returning 402 —
+    // not a single ":free" model hitting its own daily limit.
+    const creditModels = new Set<string>();
+    const ABORT_AT = 10;
+    const aborted = (): boolean => creditModels.size >= ABORT_AT;
     const runCell = async (trap: Trap, adapter: Adapter): Promise<void> => {
       const have = results.get(trap.id)!.get(adapter.name);
       if (have && have.source !== "error" && have.source !== "incompatible") return; // already done (resume)
@@ -148,7 +152,7 @@ async function main(): Promise<void> {
       for (let k = 0; k < K; k++) runs.push(await adapter.answer(trap));
       const g = gradeRuns(trap, runs);
       results.get(trap.id)!.set(adapter.name, g);
-      if (isCreditError(g)) aborted = true;
+      if (isCreditError(g)) creditModels.add(adapter.name);
     };
 
     const tasks: { trap: Trap; adapter: Adapter }[] = [];
@@ -156,13 +160,13 @@ async function main(): Promise<void> {
     let done = 0;
     const total = tasks.length;
     await mapLimit(tasks, CONCURRENCY, async ({ trap, adapter }) => {
-      if (aborted) return;
+      if (aborted()) return;
       await runCell(trap, adapter);
       done++;
       if (done % 100 === 0 || done === total) { log.step(`${done}/${total} cells graded`); saveJson(); }
     });
 
-    if (aborted) {
+    if (aborted()) {
       log.error("ABORTED: account out of credits (402). Top up, then re-run with PROBE_RESUME=1 to continue without re-paying for completed cells.");
       saveJson();
     } else {
@@ -170,13 +174,13 @@ async function main(): Promise<void> {
       if (sweep.length) {
         log.info(`Re-sweeping ${sweep.length} transient-errored cells...`);
         await mapLimit(sweep, CONCURRENCY, async ({ trap, adapter }) => {
-          if (aborted) return;
+          if (aborted()) return;
           const prev = results.get(trap.id)!.get(adapter.name);
           const runs = [];
           for (let k = 0; k < K; k++) runs.push(await adapter.answer(trap));
           const g = gradeRuns(trap, runs);
           if (g.source !== "error" || prev?.source === "error") results.get(trap.id)!.set(adapter.name, g);
-          if (isCreditError(g)) aborted = true;
+          if (isCreditError(g)) creditModels.add(adapter.name);
         });
       }
     }
